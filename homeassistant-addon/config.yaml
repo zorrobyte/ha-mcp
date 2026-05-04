@@ -38,6 +38,7 @@ schema:
   enable_skills_as_tools: bool?
   enable_tool_search: bool?
   verify_ssl: bool?
+  advanced_debug_logging: bool?
 # Add-on exposes HTTP port for MCP communication (fixed internal port)
 ports:
   9583/tcp: 9583

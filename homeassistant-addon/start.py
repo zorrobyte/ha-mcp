@@ -279,6 +279,7 @@ def main() -> int:
     disabled_tools_raw = ""  # default
     pinned_tools_raw = ""  # default
     verify_ssl = True  # default
+    advanced_debug_logging = False  # default
     config_read_ok = True
 
     if config_file.exists():
@@ -306,6 +307,7 @@ def main() -> int:
             raw_pinned = config.get("pinned_tools", "")
             pinned_tools_raw = raw_pinned if isinstance(raw_pinned, str) else ""
             verify_ssl = resolve_bool_option(config, "verify_ssl", True)
+            advanced_debug_logging = resolve_bool_option(config, "advanced_debug_logging", False)
         except Exception as e:
             log_error(f"Failed to read config: {e}, using defaults")
             config_read_ok = False
@@ -337,6 +339,7 @@ def main() -> int:
 
     log_info(f"Backup hint mode: {backup_hint}")
     log_info(f"Verify SSL: {verify_ssl}")
+    log_info(f"Advanced debug logging: {advanced_debug_logging}")
 
     # Set up environment for ha-mcp
     os.environ["HOMEASSISTANT_URL"] = "http://supervisor/core"
@@ -385,6 +388,19 @@ def main() -> int:
         register_browser_landing,
     )
     from ha_mcp.settings_ui import register_settings_routes
+
+    if advanced_debug_logging:
+        # Defers SA_SIGINFO install until uvicorn's capture_signals has
+        # run. Otherwise uvicorn's signal.signal() call would overwrite
+        # our handler before any signal arrived.
+        # Wrapped because diagnostics must never block addon startup.
+        try:
+            from ha_mcp.utils.kill_signal_diagnostics import (
+                schedule_install_after_uvicorn,
+            )
+            schedule_install_after_uvicorn()
+        except Exception as e:
+            log_error(f"advanced_debug_logging install failed: {e!r}; continuing")
 
     register_browser_landing(mcp, secret_path)
     # Mount settings UI routes both at root (for HA ingress proxy) and
